@@ -10,6 +10,7 @@ typedef uint8_t INST;
 
 class hello: public contract {
 	private:
+		key filetextkey = make_key("myfiletextkey");
 		vector<INST> nfa_instr_all;
 
 		INST CHR = 0x00;
@@ -30,26 +31,6 @@ class hello: public contract {
 	public:
 		using contract::contract;
 
-		/*
-		bool test_regular(void) {
-			uint32_t i = 0;
-			vector<string> patterns = {".[bcd]+bcdef.[^gh]?ijk*kk$", ".*", ".*", "\\.\\.\\.\\.\\.", ".b?[^a]?ab*[^b]+", "ab?[^a]?ab*[^b]+", ".b?[^a]?ab*[^b]+", "a[.*?\\]+=/]+b", "a[.*?\\]+=/]+b", ".*a?a?b+b+c*c*$", ".*a?a?b+b+c*c?$",".*a?a?b+b+c*c?$","\\.*a?a?b*b+c*c?$"};
-
-			vector<string> strings = {"xdkjafskd_a_bcdbcdbcdbcdbcdefgiijkkkkkk", "abc", "", "....", "aawiejfijsiidjfllek", "abcdabcd", "xab", "0123a+b", "0123a...cb", "bb", "xb", "xbb", "abbbc"};
-			vector<uint8_t> result = {1, 1, 1, 0, 1, 0, 0 , 1, 0, 1, 0, 1, 1};
-
-			while ( i < (patterns.size())) {
-				printf("%u\n", i);
-				printf("%s\n", patterns[i].c_str());
-				printf("%s\n", strings[i].c_str());
-				bool res = regular_match(patterns[i], strings[i]);
-				check(res == result[i], "result check error\n");
-				i++;
-			}
-			return true;
-		}
-		*/
-
 		uint8_t match(string &pattern, string &oris) {
 			nfa_instr_all.clear();
 			re_compile(pattern);
@@ -58,6 +39,21 @@ class hello: public contract {
 				return 1;
 			else
 				return 0;
+		}
+
+		uint8_t putext(string &filetext) {
+			printf("xxxxxxxxxxxxxxxxx putext\n %s\n", filetext.c_str());
+			storage_put(filetextkey, filetext);
+			return 1;
+		}
+
+		uint8_t performancematch(uint32_t count) {
+			string filetext;
+
+			check(storage_get(filetextkey,filetext), "get filetext noting");
+			check(filetext.size() == 0, "filetext size zero");
+			printf("%s\n", filetext.c_str());
+			return 1;
 		}
 	private:
 
@@ -499,7 +495,7 @@ class hello: public contract {
 		}
 };
 
-ONTIO_DISPATCH( hello, (match))
+ONTIO_DISPATCH( hello, (match)(performancematch)(putext))
 
 	/*
 extern "C" void invoke() {

@@ -3,8 +3,6 @@ Ontology,Ontology is the best,TRUE
 \\,\,TRUE
 .,,FALSE
 [abc.],d.d,TRUE
-"[\\,]",abc\,TRUE
-"[\\,]","a,b,c",TRUE
 [.],abc.,TRUE
 a[bc]d,dddacdd,TRUE
 a[bc]d,cdd,FALSE
@@ -216,8 +214,6 @@ aaa,aabaaadd,TRUE
 [abc],d,FALSE
 [abc],dd,FALSE
 [abc.],d.d,TRUE
-"[\\,]",abc\,TRUE
-"[\\,]","a,b,c",TRUE
 [.],abc.,TRUE
 [.],abc,FALSE
 [ab]cd,acd,TRUE

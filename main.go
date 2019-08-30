@@ -19,11 +19,9 @@
 package main
 
 import (
-	"bufio"
-	"encoding/csv"
 	"encoding/hex"
+	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"math"
 	"os"
@@ -34,6 +32,7 @@ import (
 	"github.com/ontio/ontology/account"
 	"github.com/ontio/ontology/cmd"
 	"github.com/ontio/ontology/cmd/utils"
+	common3 "github.com/ontio/ontology/common"
 	"github.com/ontio/ontology/common/config"
 	"github.com/ontio/ontology/common/log"
 	"github.com/ontio/ontology/core/payload"
@@ -163,65 +162,80 @@ func neovmCLI(ctx *cli.Context) {
 
 	// load testcases
 	testcaseFile := ctx.String(utils.GetFlagName(TestCasesFlag))
-	f, err := os.Open(testcaseFile)
+
+	// construct args. get filetext
+	filetext, err := ioutil.ReadFile(testcaseFile)
+	//fmt.Printf("%s\n", filetext)
+
+	//var params []interface{}
+	//if CallVmType == payload.NEOVM_TYPE {
+	//	params = []interface{}{"store", []interface{}{filetext}}
+	//} else if CallVmType == payload.WASMVM_TYPE {
+	//	params = []interface{}{"store", filetext}
+	//} else {
+	//	log.Errorf("VM type error")
+	//	return
+	//}
+
+	for {
+		if filetext[len(filetext)-1] == '\n' {
+			fmt.Printf("===do not have enter in last===\n")
+			filetext = filetext[:len(filetext)-1]
+		} else {
+			break
+		}
+	}
+	//fmt.Printf("%s\n", string(filetext))
+
+	params := []interface{}{"putext", filetext}
+	testResult, gas, err := executeMethodargs(CallVmType, contractAddr, params, stateStore, overlay, owner)
 	if err != nil {
-		log.Errorf("failed to read testcase file %s: %s", testcaseFile, err)
+		log.Errorf("executeMethodargs: %s", err)
 		return
 	}
-	defer f.Close()
+	log.Infof("test_result: %s", testResult)
+	log.Infof("sum gas: %d", gas)
 
-	reader := csv.NewReader(bufio.NewReader(f))
-	gas_sum := uint64(0)
-	case_id := 1
-	for {
-		line, err := reader.Read()
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			log.Errorf("read testcase file: %s", err)
-			return
-		}
+	//{
+	//	params = []interface{}{"store", filetext}
 
-		if len(line) != 3 {
-			log.Errorf("bad testcase: %v", line)
-			continue
-		}
+	//	_, _, err := executeMethodargs(CallVmType, contractAddr, params, stateStore, overlay, owner)
+	//	if err != nil {
+	//		log.Errorf("executeMethodargs: %s", err)
+	//	}
+	//}
 
-		pattern := strings.TrimSpace(line[0])
-		text := strings.TrimSpace(line[1])
-		result := strings.TrimSpace(line[2])
-
-		var mtx *types.MutableTransaction
-		//params := []interface{}{"init"}
-		if CallVmType == payload.NEOVM_TYPE {
-			params := []interface{}{"match", []interface{}{pattern, text}}
-			mtx, err = common2.NewNeovmInvokeTransaction(0, gaslimit, contractAddr, params)
-		} else if CallVmType == payload.WASMVM_TYPE {
-			params := []interface{}{"match", pattern, text}
-			mtx, err = common2.NewWasmVMInvokeTransaction(0, gaslimit, contractAddr, params)
-		} else {
-			log.Errorf("VM type error")
-		}
-
-		if err != nil {
-			log.Errorf("create tx for testcase %d failed: %s", case_id, err)
-			break
-		}
-		testResult, gas, err := executeInvokeTx(stateStore, overlay, owner, mtx)
-		if err != nil {
-			log.Errorf("process testcase %d failed: %s", case_id, err)
-			break
-		}
-		if testResult != result {
-			log.Errorf("testcase %d failed: '%s' vs '%s'", case_id, testResult, result)
-			break
-		}
-
-		//log.Infof("case %d: passed", case_id)
-		gas_sum += gas
-		case_id++
+	params = []interface{}{"performancematch", uint32(10)}
+	testResult, gas, err = executeMethodargs(CallVmType, contractAddr, params, stateStore, overlay, owner)
+	if err != nil {
+		log.Errorf("executeMethodargs: %s", err)
+		return
 	}
-	log.Infof("sum gas: %d", gas_sum)
+	log.Infof("test_result: %s", testResult)
+	log.Infof("sum gas: %d", gas)
+}
+
+func executeMethodargs(vmType byte, contractAddr common3.Address, params []interface{}, stateStore *ledgerstore.StateStore, overlay *overlaydb.OverlayDB, user *account.Account) (string, uint64, error) {
+	var mtx *types.MutableTransaction
+	if CallVmType == payload.NEOVM_TYPE {
+		// acctually sc.Gas will ignore this gaslimit(second arg) on this test. so pass zero is ok.
+		mtxl, err := common2.NewNeovmInvokeTransaction(0, 0, contractAddr, params)
+		if err != nil {
+			return "", 0, fmt.Errorf("%s", err)
+		}
+		mtx = mtxl
+	} else if CallVmType == payload.WASMVM_TYPE {
+		// acctually sc.Gas will ignore this gaslimit(second arg) on this test. so pass zero is ok.
+		mtxl, err := common2.NewWasmVMInvokeTransaction(0, 0, contractAddr, params)
+		if err != nil {
+			return "", 0, fmt.Errorf("%s", err)
+		}
+		mtx = mtxl
+	} else {
+		return "", 0, errors.New("VM type error")
+	}
+
+	return executeInvokeTx(stateStore, overlay, user, mtx)
 }
 
 func executeDeployTx(store *ledgerstore.StateStore, overlay *overlaydb.OverlayDB, user *account.Account, mtx *types.MutableTransaction) error {
@@ -269,11 +283,21 @@ func executeInvokeTx(store *ledgerstore.StateStore, overlay *overlaydb.OverlayDB
 	}
 	invoke := tx.Payload.(*payload.InvokeCode)
 
+	gasTable := make(map[string]uint64)
+	neovm.GAS_TABLE.Range(func(k, value interface{}) bool {
+		key := k.(string)
+		val := value.(uint64)
+		gasTable[key] = val
+
+		return true
+	})
+
 	sc := smartcontract.SmartContract{
-		Config:  config,
-		Store:   nil,
-		CacheDB: cache,
-		Gas:     math.MaxUint64,
+		Config:   config,
+		Store:    nil,
+		CacheDB:  cache,
+		Gas:      math.MaxUint64,
+		GasTable: gasTable,
 		//PreExec: true,
 	}
 
@@ -289,6 +313,8 @@ func executeInvokeTx(store *ledgerstore.StateStore, overlay *overlaydb.OverlayDB
 	//for _, n := range sc.Notifications {
 	//	log.Infof(" '%v' : '%v'", n.ContractAddress, n.States)
 	//}
+
+	cache.Commit()
 
 	if tx.TxType == types.InvokeNeo {
 		cv, err := result.(*neotype.VmValue).ConvertNeoVmValueHexString()
