@@ -334,7 +334,6 @@ func executeInvokeTx(store *ledgerstore.StateStore, overlay *overlaydb.OverlayDB
 			//return cv.(string), 0, fmt.Errorf("preexec invoke failed to convert result")
 		}
 	} else if tx.TxType == types.InvokeWasm {
-		//sc.Gas = engine.(*wasmvm.WasmVmService).GasLimit
 		if result.([]byte)[0] == 0 {
 			return "FALSE", math.MaxUint64 - sc.Gas, nil
 		} else if result.([]byte)[0] == 1 {
