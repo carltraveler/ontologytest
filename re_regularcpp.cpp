@@ -42,17 +42,77 @@ class hello: public contract {
 		}
 
 		uint8_t putext(string &filetext) {
-			printf("xxxxxxxxxxxxxxxxx putext\n %s\n", filetext.c_str());
+			printf("%d\n", filetext.size());
 			storage_put(filetextkey, filetext);
 			return 1;
+		}
+
+		vector<string> split(const std::string &str, char c) {
+			vector<string> res;
+			uint32_t len_t = str.size();
+			uint32_t i = 0;
+			string t("");
+
+			for(i = 0; i < len_t; i++) {
+				char x = str[i];
+				if (x == ' ') {
+					continue;
+				} else if (x != c) {
+					t.push_back(x);
+				} else {
+					if (t != "") {
+						res.push_back(t);
+					} else {
+						res.push_back("");
+					}
+					t = "";
+				}
+			}
+
+			res.push_back(t);
+			return res;
 		}
 
 		uint8_t performancematch(uint32_t count) {
 			string filetext;
 
-			check(storage_get(filetextkey,filetext), "get filetext noting");
-			check(filetext.size() == 0, "filetext size zero");
-			printf("%s\n", filetext.c_str());
+			check(storage_get(filetextkey,filetext), "get filetext noting\n");
+			check(filetext.size() != 0, "filetext size zero\n");
+
+			auto filetextarray = split(filetext,'\n');
+			check(filetextarray.size() != 0 , "filetextarray empty\n");
+			printf("filetext.size %d\n", filetext.size());
+
+			uint32_t i = 0;
+			while ( i < count ) {
+				for (auto line : filetextarray) {
+					//printf("%s\n", line.c_str());
+					auto linearray = split(line, ',');
+					check(linearray.size() == 3, "linearray len not 3");
+
+					string pattern = linearray[0];
+					string text = linearray[1];
+					string result  = linearray[2];
+					bool lres = false;
+					//printf("%s,", pattern.c_str());
+					//printf("%s,\n", text.c_str());
+					//printf("%s,", result.c_str());
+
+					if (result.substr(0, 4) == "TRUE") {
+						lres = true;
+					} else if (result.substr(0, 5) == "FALSE") {
+						lres = false;
+					} else {
+						check(false, "result expect error 00");
+					}
+
+					bool rres = match(pattern, text);
+					check(rres == lres , "result expect error 11");
+				}
+
+				i++;
+			}
+
 			return 1;
 		}
 	private:

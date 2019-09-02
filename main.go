@@ -43,7 +43,6 @@ import (
 	"github.com/ontio/ontology/smartcontract"
 	"github.com/ontio/ontology/smartcontract/event"
 	"github.com/ontio/ontology/smartcontract/service/neovm"
-	"github.com/ontio/ontology/smartcontract/service/wasmvm"
 	"github.com/ontio/ontology/smartcontract/storage"
 	neotype "github.com/ontio/ontology/vm/neovm/types"
 	"github.com/urfave/cli"
@@ -186,6 +185,7 @@ func neovmCLI(ctx *cli.Context) {
 		}
 	}
 	//fmt.Printf("%s\n", string(filetext))
+	fmt.Printf("%d\n", len(filetext))
 
 	params := []interface{}{"putext", filetext}
 	testResult, gas, err := executeMethodargs(CallVmType, contractAddr, params, stateStore, overlay, owner)
@@ -193,8 +193,8 @@ func neovmCLI(ctx *cli.Context) {
 		log.Errorf("executeMethodargs: %s", err)
 		return
 	}
-	log.Infof("test_result: %s", testResult)
-	log.Infof("sum gas: %d", gas)
+	log.Infof("putext test_result: %s", testResult)
+	log.Infof("putext sum gas: %d", gas)
 
 	//{
 	//	params = []interface{}{"store", filetext}
@@ -205,7 +205,7 @@ func neovmCLI(ctx *cli.Context) {
 	//	}
 	//}
 
-	params = []interface{}{"performancematch", uint32(10)}
+	params = []interface{}{"performancematch", uint32(1)}
 	testResult, gas, err = executeMethodargs(CallVmType, contractAddr, params, stateStore, overlay, owner)
 	if err != nil {
 		log.Errorf("executeMethodargs: %s", err)
@@ -331,7 +331,7 @@ func executeInvokeTx(store *ledgerstore.StateStore, overlay *overlaydb.OverlayDB
 			//return cv.(string), 0, fmt.Errorf("preexec invoke failed to convert result")
 		}
 	} else if tx.TxType == types.InvokeWasm {
-		sc.Gas = engine.(*wasmvm.WasmVmService).GasLimit
+		//sc.Gas = engine.(*wasmvm.WasmVmService).GasLimit
 		if result.([]byte)[0] == 0 {
 			return "FALSE", math.MaxUint64 - sc.Gas, nil
 		} else if result.([]byte)[0] == 1 {
