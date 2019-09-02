@@ -80,7 +80,6 @@ class hello: public contract {
 
 			auto filetextarray = split(filetext,'\n');
 			check(filetextarray.size() != 0 , "filetextarray empty\n");
-			//printf("filetext.size %d\n", filetext.size());
 
 			uint32_t i = 0;
 			uint32_t lcount = uint32_t(count);
