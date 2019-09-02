@@ -205,7 +205,7 @@ func neovmCLI(ctx *cli.Context) {
 	//	}
 	//}
 
-	params = []interface{}{"performancematch", uint32(1)}
+	params = []interface{}{"performancematch", uint32(100)}
 	testResult, gas, err = executeMethodargs(CallVmType, contractAddr, params, stateStore, overlay, owner)
 	if err != nil {
 		log.Errorf("executeMethodargs: %s", err)
@@ -306,13 +306,19 @@ func executeInvokeTx(store *ledgerstore.StateStore, overlay *overlaydb.OverlayDB
 	if err != nil {
 		return "", 0, fmt.Errorf("start exec engine failed: %s", err)
 	}
+	start := time.Now()
+
 	result, err := engine.Invoke()
+
 	if err != nil {
 		return "", 0, fmt.Errorf("preexec invoke failed: %s", err)
 	}
+	end := time.Now()
+	timeresult := end.Sub(start)
 	//for _, n := range sc.Notifications {
 	//	log.Infof(" '%v' : '%v'", n.ContractAddress, n.States)
 	//}
+	fmt.Printf("Conmsumed time: %s\n", timeresult)
 
 	cache.Commit()
 
