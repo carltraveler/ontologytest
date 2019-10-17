@@ -25,30 +25,50 @@ closure_count = NOP
 
 filetextkey = "myfiletextkey"
 
+testcase="""a[abc]*def,xxxeeeeffffdefaaabbaabcdef,TRUE
+[abc]+def,aaaaabbbbbbccccccadef,TRUE
+[abc]+def,abcdeffffaaacceeff,TRUE
+[abc]+def,abcdeddddeffffeeee,FALSE
+[abc]+def,abcdeabcdeabcdef,TRUE
+[ab]?[cd].e.f+g$,bbbbaaaadxeyffg,TRUE
+\.[01234]+\.,123.123.123.123,TRUE
+\.[01234]+\.,abc.123.123,TRUE
+[abc],b,TRUE
+[abc]*def,abcdeabcdeabcdef,TRUE
+a[abc]*def,abcddef,FALSE
+[abc]+def,def,FALSE
+[abc]+def,adef,TRUE
+[abc]+def,abcdef,TRUE
+[abc]+def,aadef,TRUE
+[abc]+def,abcde,FALSE
+[abc]+def,aaaadef,TRUE
+[abc]+def,abcdeabcdeabcdef,TRUE
+[abc]+def,adef,TRUE
+[abc]+def,adefddd,TRUE
+[abc]+def,defdddd,FALSE
+a[abc]+def,adef,FALSE
+a[abc]+def,aabdef,TRUE
+a[abc]+def,abcdef,TRUE
+a[abc]+def,aaacdef,TRUE
+a[abc]+def,aabcdef,TRUE
+^a,abc,TRUE
+^a,bac,FALSE
+a$,cba,TRUE
+a$,abc,FALSE
+^$,,TRUE
+^$,a,FALSE
+^[^abc]?def,def,TRUE
+^[^abc]+def,xxdef,TRUE
+a[bcd]+ef.[^gh]?ijk$,abcdefgijk,TRUE"""
 
-def Main(operation, args):
-    if operation == "match":
-        pattern = args[0]
-        text = args[1]
-        return regular_match(pattern, text)
-    elif operation == "putext":
-        return stringstore(args)
-    elif operation == "performancematch":
-        count = args + 0
-        return performancematch(count)
-
-    return False
-
-
-def stringstore(text):
-    Put(GetContext(), filetextkey, text)
-    return True
+def Main():
+    return performancematch(100)
 
 
 def performancematch(count):
     i = 0
     res = 0
-    filetext = Get(GetContext(), filetextkey)
+    filetext = testcase
     if len(filetext) == 0:
         print("filetext empty")
         assert(False)
