@@ -1,1 +1,1 @@
-./nvm-tool -b ./a.out.str -t final-testcases.csv
+./nvm-tool -b ./a.wasm.str -t short.csv

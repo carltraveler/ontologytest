@@ -42,7 +42,6 @@ class hello: public contract {
 		}
 
 		uint8_t putext(string &filetext) {
-			//printf("%d\n", filetext.size());
 			storage_put(filetextkey, filetext);
 			return 1;
 		}
@@ -73,7 +72,7 @@ class hello: public contract {
 			return res;
 		}
 
-		uint8_t performancematch(uint32_t count) {
+		uint8_t performancematch(int128_t count) {
 			string filetext;
 
 			check(storage_get(filetextkey,filetext), "get filetext noting\n");
@@ -84,6 +83,7 @@ class hello: public contract {
 			//printf("filetext.size %d\n", filetext.size());
 
 			uint32_t i = 0;
+			uint32_t lcount = uint32_t(count);
 			while ( i < count ) {
 				for (auto line : filetextarray) {
 					//printf("%s\n", line.c_str());

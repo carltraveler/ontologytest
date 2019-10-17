@@ -39,6 +39,7 @@ import (
 	"github.com/ontio/ontology/core/store/ledgerstore"
 	"github.com/ontio/ontology/core/store/overlaydb"
 	"github.com/ontio/ontology/core/types"
+	utils2 "github.com/ontio/ontology/core/utils"
 	common2 "github.com/ontio/ontology/http/base/common"
 	"github.com/ontio/ontology/smartcontract"
 	"github.com/ontio/ontology/smartcontract/event"
@@ -76,7 +77,7 @@ var (
 		Name:  "type,p",
 		Usage: "type p",
 	}
-	CallVmType byte = payload.NEOVM_TYPE
+	CallVmType payload.VmType = payload.NEOVM_TYPE
 )
 
 func setupAPP() *cli.App {
@@ -133,7 +134,10 @@ func neovmCLI(ctx *cli.Context) {
 	}
 
 	gaslimit := uint64(100000000)
-	mtx := utils.NewDeployCodeTransaction(0, gaslimit, code, CallVmType, "test", "test", "test", "test", "test")
+	mtx, err := utils.NewDeployCodeTransaction(0, gaslimit, code, CallVmType, "test", "test", "test", "test", "test")
+	if err != nil {
+		log.Errorf("failed to create deploy transation.")
+	}
 	d := mtx.Payload.(*payload.DeployCode)
 	if d == nil {
 		log.Errorf("failed to get smart contract deploy address")
@@ -164,28 +168,20 @@ func neovmCLI(ctx *cli.Context) {
 
 	// construct args. get filetext
 	filetext, err := ioutil.ReadFile(testcaseFile)
-	//fmt.Printf("%s\n", filetext)
-
-	//var params []interface{}
-	//if CallVmType == payload.NEOVM_TYPE {
-	//	params = []interface{}{"store", []interface{}{filetext}}
-	//} else if CallVmType == payload.WASMVM_TYPE {
-	//	params = []interface{}{"store", filetext}
-	//} else {
-	//	log.Errorf("VM type error")
-	//	return
-	//}
+	if err != nil {
+		log.Errorf("%s", err)
+		return
+	}
 
 	for {
 		if filetext[len(filetext)-1] == '\n' {
-			fmt.Printf("===do not have enter in last===\n")
 			filetext = filetext[:len(filetext)-1]
 		} else {
 			break
 		}
 	}
-	//fmt.Printf("%s\n", string(filetext))
-	fmt.Printf("%d\n", len(filetext))
+
+	log.Infof("test len %d", len(filetext))
 
 	params := []interface{}{"putext", filetext}
 	testResult, gas, err := executeMethodargs(CallVmType, contractAddr, params, stateStore, overlay, owner)
@@ -215,7 +211,7 @@ func neovmCLI(ctx *cli.Context) {
 	log.Infof("sum gas: %d", gas)
 }
 
-func executeMethodargs(vmType byte, contractAddr common3.Address, params []interface{}, stateStore *ledgerstore.StateStore, overlay *overlaydb.OverlayDB, user *account.Account) (string, uint64, error) {
+func executeMethodargs(vmType payload.VmType, contractAddr common3.Address, params []interface{}, stateStore *ledgerstore.StateStore, overlay *overlaydb.OverlayDB, user *account.Account) (string, uint64, error) {
 	var mtx *types.MutableTransaction
 	if CallVmType == payload.NEOVM_TYPE {
 		// acctually sc.Gas will ignore this gaslimit(second arg) on this test. so pass zero is ok.
@@ -226,7 +222,7 @@ func executeMethodargs(vmType byte, contractAddr common3.Address, params []inter
 		mtx = mtxl
 	} else if CallVmType == payload.WASMVM_TYPE {
 		// acctually sc.Gas will ignore this gaslimit(second arg) on this test. so pass zero is ok.
-		mtxl, err := common2.NewWasmVMInvokeTransaction(0, 0, contractAddr, params)
+		mtxl, err := utils2.NewWasmVMInvokeTransaction(0, 0, contractAddr, params)
 		if err != nil {
 			return "", 0, fmt.Errorf("%s", err)
 		}
@@ -278,7 +274,7 @@ func executeInvokeTx(store *ledgerstore.StateStore, overlay *overlaydb.OverlayDB
 	cache := storage.NewCacheDB(overlay)
 	config := &smartcontract.Config{
 		Time:   uint32(time.Now().Unix()),
-		Height: 1000,
+		Height: 7000000,
 		Tx:     tx,
 	}
 	invoke := tx.Payload.(*payload.InvokeCode)
@@ -293,11 +289,12 @@ func executeInvokeTx(store *ledgerstore.StateStore, overlay *overlaydb.OverlayDB
 	})
 
 	sc := smartcontract.SmartContract{
-		Config:   config,
-		Store:    nil,
-		CacheDB:  cache,
-		Gas:      math.MaxUint64,
-		GasTable: gasTable,
+		Config:       config,
+		Store:        nil,
+		CacheDB:      cache,
+		Gas:          math.MaxUint64,
+		GasTable:     gasTable,
+		WasmExecStep: math.MaxUint64,
 		//PreExec: true,
 	}
 
